@@ -1,0 +1,131 @@
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.brand-mark {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.brand-name {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.app-main {
+  flex: 1;
+  padding-bottom: 80px;
+}
+
+.app-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
+  z-index: 10;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  color: var(--text-faint);
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  border-radius: var(--radius-md);
+}
+
+.nav-item:hover {
+  color: var(--text-dim);
+}
+
+.nav-item.is-active {
+  color: var(--accent);
+}
+
+/* Desktop: left rail. */
+@media (min-width: 768px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .app-header {
+    grid-column: 1;
+    grid-row: 1;
+    position: static;
+    justify-content: flex-start;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: var(--space-4);
+  }
+
+  .app-nav {
+    grid-column: 1;
+    grid-row: 2;
+    position: static;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+    backdrop-filter: none;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    padding: var(--space-3);
+    align-self: stretch;
+    gap: 2px;
+  }
+
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    padding: 10px var(--space-4);
+    font-size: 14px;
+  }
+
+  .nav-item.is-active {
+    background: var(--accent-soft);
+  }
+
+  .app-main {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    overflow-y: auto;
+    padding-bottom: 0;
+  }
+}

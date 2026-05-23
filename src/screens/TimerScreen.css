@@ -1,0 +1,468 @@
+.timer-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4) var(--space-7);
+  max-width: 520px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.timer-loading {
+  font-size: 32px;
+  color: var(--text-faint);
+  padding-top: var(--space-8);
+}
+
+.ramp-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.streak-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.streak-badge.subtle {
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+}
+
+.phase-label {
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.phase-break {
+  color: var(--good);
+}
+
+/* Big countdown — the hero element */
+.big-countdown {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.big-countdown.idle {
+  font-size: 96px;
+  font-weight: 200;
+  line-height: 1;
+  width: auto;
+  height: auto;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+}
+
+.big-countdown-unit {
+  font-size: 24px;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.progress-ring {
+  position: absolute;
+  inset: 0;
+  width: 260px;
+  height: 260px;
+}
+
+.ring-track {
+  stroke: var(--border);
+}
+
+.ring-fill {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 250ms linear;
+}
+
+.phase-break .ring-fill,
+.timer-screen .phase-break ~ * .ring-fill {
+  stroke: var(--good);
+}
+
+.countdown-text {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  font-size: 64px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  z-index: 1;
+}
+
+.countdown-sep {
+  margin: 0 4px;
+  color: var(--text-faint);
+}
+
+/* Subject picker */
+.subject-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.subject-row label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.subject-row select {
+  min-width: 200px;
+  text-align: center;
+  text-align-last: center;
+}
+
+.subject-tag {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+/* Preset buttons */
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Mode tabs (idle screen — pick Focus or Break). */
+.mode-tabs {
+  display: inline-flex;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.mode-tab {
+  padding: 8px 22px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.mode-tab:hover {
+  color: var(--text);
+}
+
+.mode-tab.is-active {
+  background: var(--accent);
+  color: white;
+}
+
+.mode-tab.break.is-active {
+  background: var(--good);
+  color: var(--bg);
+}
+
+/* Break-mode countdown number tints green. */
+.big-countdown.idle.break .mono {
+  color: var(--good);
+}
+
+/* Break preset chips (idle screen). */
+.preset.break {
+  /* default styling shared; selected state uses --good */
+}
+
+.preset.break.is-selected {
+  background: var(--good);
+  color: var(--bg);
+  border-color: var(--good);
+}
+
+/* The break preset row has 4 cells (3 minutes + Custom). */
+.break-preset-row {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Override the Custom button's default 2-col span for the break row. */
+.break-preset-row .preset.custom {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+/* Idle break Start button uses break accent. */
+.btn.btn-primary.start-btn.break {
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--bg);
+}
+
+.btn.btn-primary.start-btn.break:hover {
+  filter: brightness(1.05);
+}
+
+.preset.custom {
+  grid-column: span 2;
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.preset.custom.is-selected {
+  background: var(--accent);
+  color: white;
+  border-style: solid;
+}
+
+.preset.small.custom {
+  grid-column: auto;
+}
+
+.custom-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.custom-input-row label {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.custom-input-row input[type='number'] {
+  width: 100px;
+  text-align: center;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-break-warn {
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  margin: var(--space-1) 0 0 0;
+}
+
+.preset {
+  padding: 12px 0;
+  border-radius: var(--radius-md);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.preset:hover {
+  background: var(--bg-elev-2);
+}
+
+.preset.is-suggested {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.preset.is-selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.preset.small {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+/* Big primary start button */
+.start-btn {
+  width: 100%;
+  max-width: 360px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn.big {
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Action row (pause/resume/abort) */
+.action-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Break extend row */
+.break-extend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Physical-break prompt */
+.physical-break-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 380px;
+  text-align: center;
+  padding: var(--space-5);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.physical-break-icon {
+  font-size: 48px;
+  filter: grayscale(0.2);
+}
+
+.physical-break-prompt h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.physical-break-prompt p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hint {
+  font-size: 12px;
+  margin-top: var(--space-2);
+  text-align: center;
+}
+
+.override-note {
+  font-size: 13px;
+  margin-top: -8px;
+}
+
+@media (max-width: 400px) {
+  .big-countdown,
+  .progress-ring {
+    width: 220px;
+    height: 220px;
+  }
+  .countdown-text {
+    font-size: 52px;
+  }
+  .big-countdown.idle {
+    font-size: 80px;
+  }
+}
+
+/* Ramp-up modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+  animation: modal-fade-in 180ms ease;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow);
+  animation: modal-rise 220ms ease;
+}
+
+@keyframes modal-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.modal-eyebrow.good {
+  color: var(--good);
+}
+
+.transition-modal {
+  border-color: var(--good);
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.modal-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.modal-cancel {
+  margin-top: var(--space-1);
+  font-size: 13px;
+}
