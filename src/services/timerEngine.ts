@@ -33,6 +33,7 @@ export interface TimerStatus {
   // a long custom break). UI shows the physical-break prompt immediately,
   // not after the 15-min mark.
   isLongBreak: boolean;
+  isStopwatch: boolean;
 }
 
 export function computeElapsedMs(t: ActiveTimer, now: number): number {
@@ -50,21 +51,24 @@ export function getStatus(active: ActiveTimer | null, now: number): TimerStatus 
       remainingSec: 0,
       isPaused: false,
       hasOverrunPhysicalLimit: false,
-      isLongBreak: false
+      isLongBreak: false,
+      isStopwatch: false
     };
   }
   const elapsedSec = Math.floor(computeElapsedMs(active, now) / 1000);
   const physicalLimitSec = BREAK_PHYSICAL_LIMIT_MIN * 60;
+  const isStopwatch = active.phase === 'focus' && active.plannedDurationSec === 0;
   return {
     phase: active.phase,
     plannedSec: active.plannedDurationSec,
     elapsedSec,
-    remainingSec: active.plannedDurationSec - elapsedSec,
+    remainingSec: isStopwatch ? Infinity : active.plannedDurationSec - elapsedSec,
     isPaused: active.pausedAt !== null,
     hasOverrunPhysicalLimit:
       active.phase === 'break' && elapsedSec >= physicalLimitSec,
     isLongBreak:
-      active.phase === 'break' && active.plannedDurationSec > physicalLimitSec
+      active.phase === 'break' && active.plannedDurationSec > physicalLimitSec,
+    isStopwatch
   };
 }
 
@@ -170,9 +174,8 @@ export function rampIndexForCompletedDurationSec(completedDurationSec: number): 
 // the original auto-advance felt too aggressive, pushing users to longer
 // sessions before they had built real stamina at the current rung.
 //
-// `streakAtCurrentRung` increments only when the user completes a session at
-// the currently-suggested duration with no override. Overrides still count
-// toward `currentStreak` (the streak is intact) but do not earn ramp progress.
+// `streakAtCurrentRung` increments when the user completes a focus session
+// (including stopwatch or overrides) that meets or exceeds the currently-suggested duration.
 export function afterFocusCompleted(opts: {
   currentStreak: number;
   streakAtCurrentRung: number;
@@ -181,8 +184,8 @@ export function afterFocusCompleted(opts: {
   wasOverride: boolean;
 }): { newStreak: number; newStreakAtCurrentRung: number } {
   const currentRungSec = suggestedFocusDurationSec(opts.currentRampIndex);
-  // "Matched the rung" = no override AND completed at least the suggested duration.
-  const matchedRung = !opts.wasOverride && opts.completedDurationSec >= currentRungSec;
+  // "Matched the rung" = completed at least the suggested duration.
+  const matchedRung = opts.completedDurationSec >= currentRungSec;
   return {
     newStreak: opts.currentStreak + 1,
     newStreakAtCurrentRung: matchedRung

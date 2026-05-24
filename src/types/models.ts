@@ -72,6 +72,10 @@ export interface AppState {
   activeSubjectId: string | null;
   theme: 'system' | 'light' | 'dark';
   notificationPermission: 'granted' | 'denied' | 'default';
+  // User-facing alert toggles (Settings screen).
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  tabFlashEnabled: boolean;
   activeTimer: ActiveTimer | null;
   // A phase just completed and the app is waiting for the user to decide what
   // to do next (start break? start focus? skip?). Cleared when the user acts

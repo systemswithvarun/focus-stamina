@@ -85,7 +85,7 @@ export function AnalyticsScreen() {
 
       <section>
         <h2>Last 30 sessions</h2>
-        <p className="text-faint section-hint">Planned and actual session length over time. Watch the ramp.</p>
+        <p className="text-faint section-hint">Planned and actual session length over time. Watch your stamina grow.</p>
         {data.rampSeries.length === 0 ? (
           <p className="text-faint">No completed sessions yet.</p>
         ) : (

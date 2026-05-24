@@ -36,6 +36,9 @@ const DEFAULT_APP_STATE: AppState = {
   activeSubjectId: null,
   theme: 'system',
   notificationPermission: 'default',
+  soundEnabled: true,
+  notificationsEnabled: true,
+  tabFlashEnabled: true,
   activeTimer: null,
   pendingTransition: null,
   dailyActiveMs: {}

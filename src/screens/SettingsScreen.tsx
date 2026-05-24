@@ -1,13 +1,15 @@
-// Settings — theme, export, import, clear all.
+// Settings — theme, alerts, export, import, clear all.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTheme, type ThemeChoice } from '../hooks/useTheme';
+import { useTimer } from '../hooks/useTimer';
 import { getRepository } from '../services/dexieRepository';
 import type { ExportBundle } from '../types/models';
 import './SettingsScreen.css';
 
 export function SettingsScreen() {
   const { choice, setChoice } = useTheme();
+  const { appState, updateSettings } = useTimer();
   const repo = useMemo(() => getRepository(), []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importMessage, setImportMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -65,6 +67,10 @@ export function SettingsScreen() {
     location.reload();
   };
 
+  const soundEnabled = appState?.soundEnabled ?? true;
+  const notificationsEnabled = appState?.notificationsEnabled ?? true;
+  const tabFlashEnabled = appState?.tabFlashEnabled ?? true;
+
   return (
     <div className="settings-screen">
       <h1>Settings</h1>
@@ -85,9 +91,65 @@ export function SettingsScreen() {
       </section>
 
       <section>
-        <h2>Notifications</h2>
-        <p className="text-dim setting-help">
-          Permission status: <span className={`perm-${notifPerm}`}>{notifPerm}</span>.
+        <h2>Alerts</h2>
+        <div className="toggle-group">
+          <label className="toggle-row" htmlFor="toggle-sound">
+            <div className="toggle-info">
+              <span className="toggle-label">Sound chimes</span>
+              <span className="toggle-desc text-dim">Play an audible alert when a phase ends</span>
+            </div>
+            <div className="toggle-switch-wrap">
+              <input
+                id="toggle-sound"
+                type="checkbox"
+                className="toggle-input"
+                checked={soundEnabled}
+                onChange={(e) => void updateSettings({ soundEnabled: e.target.checked })}
+              />
+              <div className="toggle-track" />
+            </div>
+          </label>
+
+          <label className="toggle-row" htmlFor="toggle-notif">
+            <div className="toggle-info">
+              <span className="toggle-label">Desktop notifications</span>
+              <span className="toggle-desc text-dim">
+                Show a system notification when a phase ends
+                {notifPerm === 'denied' && ' (blocked in browser settings)'}
+              </span>
+            </div>
+            <div className="toggle-switch-wrap">
+              <input
+                id="toggle-notif"
+                type="checkbox"
+                className="toggle-input"
+                checked={notificationsEnabled}
+                onChange={(e) => void updateSettings({ notificationsEnabled: e.target.checked })}
+              />
+              <div className="toggle-track" />
+            </div>
+          </label>
+
+          <label className="toggle-row" htmlFor="toggle-flash">
+            <div className="toggle-info">
+              <span className="toggle-label">Tab title flash</span>
+              <span className="toggle-desc text-dim">Flash the browser tab title when a phase ends</span>
+            </div>
+            <div className="toggle-switch-wrap">
+              <input
+                id="toggle-flash"
+                type="checkbox"
+                className="toggle-input"
+                checked={tabFlashEnabled}
+                onChange={(e) => void updateSettings({ tabFlashEnabled: e.target.checked })}
+              />
+              <div className="toggle-track" />
+            </div>
+          </label>
+        </div>
+
+        <p className="text-dim setting-help" style={{ marginTop: 'var(--space-3)', marginBottom: 0 }}>
+          Browser notification permission: <span className={`perm-${notifPerm}`}>{notifPerm}</span>.
           {notifPerm === 'denied' && ' Enable notifications in your browser settings to get phase-change alerts.'}
           {notifPerm === 'default' && ' Permission will be requested the first time you press Start.'}
         </p>
@@ -118,7 +180,7 @@ export function SettingsScreen() {
       <section>
         <h2>About</h2>
         <p className="text-dim setting-help">
-          Focus Stamina is a progressive-ramp pomodoro timer. Sessions start at 5 min and
+          Focus Stamina is a progressive stamina-building pomodoro timer. Sessions start at 5 min and
           ramp up to 45 min as you build consecutive streaks. Built for personal use; data
           lives only in this browser. iOS: install to home screen for notifications to work.
         </p>

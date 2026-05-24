@@ -118,6 +118,21 @@ describe('getStatus', () => {
     expect(getStatus(brk, T0).isLongBreak).toBe(false);
     expect(getStatus(focus({ plannedDurationSec: 60 * 60 }), T0).isLongBreak).toBe(false);
   });
+
+  it('returns isStopwatch true and remainingSec Infinity for stopwatch', () => {
+    const sw = createActiveTimer({
+      phase: 'focus',
+      plannedDurationSec: 0,
+      subjectId: null,
+      rampIndexAtStart: 0,
+      wasOverride: false,
+      now: T0
+    });
+    const s = getStatus(sw, T0 + 60_000);
+    expect(s.isStopwatch).toBe(true);
+    expect(s.remainingSec).toBe(Infinity);
+    expect(s.elapsedSec).toBe(60);
+  });
 });
 
 describe('pause / resume', () => {
@@ -229,7 +244,7 @@ describe('ramp / streak planner', () => {
     expect(r.newStreakAtCurrentRung).toBe(1);
   });
 
-  it('afterFocusCompleted does NOT increment at-rung streak when wasOverride=true', () => {
+  it('afterFocusCompleted increments at-rung streak even when wasOverride=true', () => {
     // Rung 0 (5 min). User overrode to 10 and completed.
     const r = afterFocusCompleted({
       currentStreak: 4,
@@ -239,7 +254,7 @@ describe('ramp / streak planner', () => {
       wasOverride: true
     });
     expect(r.newStreak).toBe(5);
-    expect(r.newStreakAtCurrentRung).toBe(2); // unchanged
+    expect(r.newStreakAtCurrentRung).toBe(3); // now increments
   });
 
   it('afterFocusCompleted does NOT advance the ramp index automatically', () => {

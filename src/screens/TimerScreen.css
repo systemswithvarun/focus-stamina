@@ -94,6 +94,17 @@
   transition: stroke-dashoffset 250ms linear;
 }
 
+.ring-fill.stopwatch-pulse {
+  stroke: var(--accent);
+  animation: stopwatch-pulse 2s infinite ease-in-out;
+}
+
+@keyframes stopwatch-pulse {
+  0% { stroke-opacity: 0.35; }
+  50% { stroke-opacity: 0.85; }
+  100% { stroke-opacity: 0.35; }
+}
+
 .phase-break .ring-fill,
 .timer-screen .phase-break ~ * .ring-fill {
   stroke: var(--good);

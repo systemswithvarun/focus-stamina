@@ -34,6 +34,7 @@ export function TimerScreen() {
     appState,
     loading,
     startFocus,
+    startStopwatch,
     startBreak,
     pause,
     resume,
@@ -47,9 +48,9 @@ export function TimerScreen() {
   } = useTimer();
   const { subjects } = useSubjects();
 
-  // Idle-state UI: which mode is the user starting from idle? Focus or break.
+  // Idle-state UI: which mode is the user starting from idle? Focus, break, or stopwatch.
   // Each mode has its own preset selection + custom-input state.
-  const [idleMode, setIdleMode] = useState<'focus' | 'break'>('focus');
+  const [idleMode, setIdleMode] = useState<'focus' | 'break' | 'stopwatch'>('focus');
 
   // Focus preset state.
   const [selectedPresetMin, setSelectedPresetMin] = useState<number | null>(null);
@@ -80,17 +81,14 @@ export function TimerScreen() {
 
   // Resolve "what duration is the user about to start?"
   let chosenMin: number;
-  let chosenIsCustom = false;
   if (customMode) {
     const parsed = parseInt(customMinText, 10);
     chosenMin = Number.isFinite(parsed) && parsed > 0 ? parsed : suggestedMin;
-    chosenIsCustom = true;
   } else if (selectedPresetMin !== null) {
     chosenMin = selectedPresetMin;
   } else {
     chosenMin = suggestedMin;
   }
-  const isOverride = chosenIsCustom || chosenMin !== suggestedMin;
 
   const handlePickPreset = (m: number) => {
     setCustomMode(false);
@@ -112,12 +110,9 @@ export function TimerScreen() {
       runDurationMin = Math.min(parsed, CUSTOM_FOCUS_MIN_MAX);
     }
 
-    // Ramp-up modal: only when starting at the suggested duration with no
-    // override (custom counts as override). User has earned the prompt if their
+    // Ramp-up modal: User has earned the prompt if their
     // at-rung streak hits 3, 6, 9, ...
     if (
-      !isOverride &&
-      runDurationMin === suggestedMin &&
       shouldPromptRampUp(appState.streakAtCurrentRung, appState.currentRampIndex)
     ) {
       const nextIdx = Math.min(appState.currentRampIndex + 1, RAMP_LADDER_MIN.length - 1);
@@ -128,7 +123,7 @@ export function TimerScreen() {
       return;
     }
 
-    await startFocus(runDurationMin * 60, appState.activeSubjectId, isOverride);
+    await startFocus(runDurationMin * 60, appState.activeSubjectId);
     setSelectedPresetMin(null);
     setCustomMode(false);
     setCustomMinText('');
@@ -139,7 +134,7 @@ export function TimerScreen() {
     if (!modal) return;
     await advanceRamp();
     // After the ramp advances, start at the new (higher) rung's duration.
-    await startFocus(modal.nextRungMin * 60, appState.activeSubjectId, false);
+    await startFocus(modal.nextRungMin * 60, appState.activeSubjectId);
     setSelectedPresetMin(null);
     setCustomMode(false);
     setCustomMinText('');
@@ -148,7 +143,7 @@ export function TimerScreen() {
   const handleModalStay = async () => {
     if (!modal) return;
     // User declined to advance; start at the current rung's duration as planned.
-    await startFocus(modal.suggestedMin * 60, appState.activeSubjectId, false);
+    await startFocus(modal.suggestedMin * 60, appState.activeSubjectId);
     setSelectedPresetMin(null);
     setModal(null);
   };
@@ -196,7 +191,7 @@ export function TimerScreen() {
   if (status.phase === 'idle') {
     const atTop = appState.currentRampIndex >= RAMP_LADDER_MIN.length - 1;
     const nextLabel = atTop && appState.currentStreak > 0
-      ? 'top of the ramp'
+      ? 'max stamina level'
       : appState.currentStreak === 0
       ? 'start at 5 min'
       : `next up: ${suggestedMin} min`;
@@ -212,7 +207,7 @@ export function TimerScreen() {
           )}
           {appState.streakAtCurrentRung > 0 && !atTop && (
             <span className="streak-badge subtle">
-              {appState.streakAtCurrentRung} at this rung
+              {appState.streakAtCurrentRung} at this level
             </span>
           )}
         </div>
@@ -234,12 +229,26 @@ export function TimerScreen() {
           >
             Break
           </button>
+          <button
+            role="tab"
+            aria-selected={idleMode === 'stopwatch'}
+            className={`mode-tab stopwatch ${idleMode === 'stopwatch' ? 'is-active' : ''}`}
+            onClick={() => setIdleMode('stopwatch')}
+          >
+            Stopwatch
+          </button>
         </div>
 
-        <div className={`big-countdown idle ${idleMode === 'break' ? 'break' : ''}`}>
-          <span className="mono">{headerMin}</span>
-          <span className="big-countdown-unit">min</span>
-        </div>
+        {idleMode === 'stopwatch' ? (
+          <div className="big-countdown idle">
+            <span className="mono">00:00</span>
+          </div>
+        ) : (
+          <div className={`big-countdown idle ${idleMode === 'break' ? 'break' : ''}`}>
+            <span className="mono">{headerMin}</span>
+            <span className="big-countdown-unit">min</span>
+          </div>
+        )}
 
         {idleMode === 'focus' && (
           <>
@@ -367,12 +376,29 @@ export function TimerScreen() {
           </>
         )}
 
-        {idleMode === 'focus' && isOverride && (
-          <p className="text-faint override-note">
-            {chosenIsCustom
-              ? `Custom duration. Streak counts; doesn't earn ramp progress.`
-              : `Overriding the ${suggestedMin}-min suggestion. Streak counts; doesn't earn ramp progress.`}
-          </p>
+        {idleMode === 'stopwatch' && (
+          <>
+            <div className="subject-row">
+              <label htmlFor="subject-pick" className="text-dim">Subject</label>
+              <select
+                id="subject-pick"
+                value={appState.activeSubjectId ?? ''}
+                onChange={handleSubjectChange}
+              >
+                <option value="">Unassigned</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="btn btn-primary start-btn"
+              onClick={() => void startStopwatch(appState.activeSubjectId)}
+            >
+              Start Stopwatch
+            </button>
+          </>
         )}
 
         {modal && (
@@ -394,7 +420,7 @@ export function TimerScreen() {
               await startBreak(BREAK_DEFAULT_MIN * 60);
             }}
             onStartFocus={async () => {
-              await startFocus(suggestedMin * 60, appState.activeSubjectId, false);
+              await startFocus(suggestedMin * 60, appState.activeSubjectId);
             }}
             onDismiss={() => void dismissTransition()}
           />
@@ -405,13 +431,18 @@ export function TimerScreen() {
 
   // -------------------------------------------------------- FOCUS state --
   if (status.phase === 'focus') {
+    const isStopwatch = status.isStopwatch;
     return (
       <div className="timer-screen">
-        <div className="phase-label">FOCUS</div>
-        <CountdownDisplay
-          remainingSec={Math.max(0, status.remainingSec)}
-          plannedSec={status.plannedSec}
-        />
+        <div className="phase-label">{isStopwatch ? 'STOPWATCH' : 'FOCUS'}</div>
+        {isStopwatch ? (
+          <StopwatchDisplay elapsedSec={status.elapsedSec} />
+        ) : (
+          <CountdownDisplay
+            remainingSec={Math.max(0, status.remainingSec)}
+            plannedSec={status.plannedSec}
+          />
+        )}
         <div className="subject-tag text-dim">
           {currentSubjectName(subjects, appState.activeSubjectId)}
         </div>
@@ -427,7 +458,9 @@ export function TimerScreen() {
           <button className="btn btn-danger" onClick={() => void abort()}>Reset</button>
         </div>
         <p className="text-faint hint">
-          Tab can be backgrounded — the chime will pull you back.
+          {isStopwatch
+            ? 'Keep focusing. Click "I\'m done" when you want to take a break.'
+            : 'Tab can be backgrounded — the chime will pull you back.'}
         </p>
       </div>
     );
@@ -660,7 +693,7 @@ function RampUpModal({
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={onCancel}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-eyebrow text-dim">Ready to ramp up?</div>
+        <div className="modal-eyebrow text-dim">Ready to level up?</div>
         <h2>You've done {atRungCount} sessions at {currentMin} min.</h2>
         <p className="text-dim">
           Try a {nextMin}-min session instead? You can always come back to {currentMin} min later.
@@ -677,6 +710,36 @@ function RampUpModal({
         <button className="btn btn-ghost modal-cancel" onClick={onCancel}>
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+function StopwatchDisplay({ elapsedSec }: { elapsedSec: number }) {
+  const mm = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+  const ss = (elapsedSec % 60).toString().padStart(2, '0');
+  const circumference = 2 * Math.PI * 110;
+  return (
+    <div className="big-countdown">
+      <svg className="progress-ring" width="260" height="260" viewBox="0 0 260 260">
+        <circle cx="130" cy="130" r="110" className="ring-track" fill="none" strokeWidth="6" />
+        <circle
+          cx="130"
+          cy="130"
+          r="110"
+          className="ring-fill stopwatch-pulse"
+          fill="none"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={0}
+          transform="rotate(-90 130 130)"
+        />
+      </svg>
+      <div className="countdown-text">
+        <span className="mono countdown-mm">{mm}</span>
+        <span className="mono countdown-sep">:</span>
+        <span className="mono countdown-ss">{ss}</span>
       </div>
     </div>
   );

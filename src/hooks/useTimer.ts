@@ -46,7 +46,8 @@ interface UseTimerValue {
   appState: AppState | null;
   loading: boolean;
   // Actions
-  startFocus: (durationSec: number, subjectId: string | null, isOverride: boolean) => Promise<void>;
+  startFocus: (durationSec: number, subjectId: string | null) => Promise<void>;
+  startStopwatch: (subjectId: string | null) => Promise<void>;
   startBreak: (durationSec?: number) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
@@ -59,7 +60,11 @@ interface UseTimerValue {
   advanceRamp: () => Promise<void>;
   // User dismissed the post-session "Start break?" / "Start focus?" modal.
   dismissTransition: () => Promise<void>;
+  // Update user-facing settings (sound, notifications, tab flash).
+  updateSettings: (patch: { soundEnabled?: boolean; notificationsEnabled?: boolean; tabFlashEnabled?: boolean }) => Promise<void>;
 }
+
+const BASE_TITLE = 'Focus Stamina';
 
 function fmtPhaseTitle(phase: 'focus' | 'break', durationSec: number): string {
   const min = Math.round(durationSec / 60);
@@ -173,6 +178,7 @@ export function useTimer(): UseTimerValue {
   // background catch-up.
   useEffect(() => {
     if (!appState?.activeTimer) return;
+    if (appState.activeTimer.plannedDurationSec === 0) return;
     const s = getStatus(appState.activeTimer, now);
     if (s.remainingSec <= 0) {
       void checkAndAdvanceIfElapsed();
@@ -182,9 +188,19 @@ export function useTimer(): UseTimerValue {
 
   // ---- Helpers --------------------------------------------------------------
 
+  // Ref for settings so async callbacks always read the latest values.
+  const settingsRef = useRef({ soundEnabled: true, notificationsEnabled: true, tabFlashEnabled: true });
+  settingsRef.current = {
+    soundEnabled: appState?.soundEnabled ?? true,
+    notificationsEnabled: appState?.notificationsEnabled ?? true,
+    tabFlashEnabled: appState?.tabFlashEnabled ?? true
+  };
+
   const scheduleNextChime = useCallback((active: ActiveTimer) => {
     cancelScheduledChime();
     if (!isAudioUnlocked()) return;
+    if (!settingsRef.current.soundEnabled) return;
+    if (active.plannedDurationSec === 0) return;
     const targetEpochMs = active.startedAt + active.plannedDurationSec * 1000 + active.pausedAccumMs;
     scheduleChimeAt({ targetEpochMs });
   }, []);
@@ -211,7 +227,9 @@ export function useTimer(): UseTimerValue {
     // the tab was backgrounded — that's fine, we play another one now to
     // guarantee the alert lands when the user is actually present).
     cancelScheduledChime();
-    playTransitionAlert();
+    if (settingsRef.current.soundEnabled) {
+      playTransitionAlert();
+    }
 
     if (active.phase === 'focus') {
       // Focus complete: bump streak counters. Ramp index is NOT auto-bumped —
@@ -241,10 +259,12 @@ export function useTimer(): UseTimerValue {
       setAppState(next);
       activeRef.current = null;
 
-      notify(
-        'Focus session complete',
-        `Ready for a break? Open Focus Stamina to start it.`
-      );
+      if (settingsRef.current.notificationsEnabled) {
+        notify(
+          'Focus session complete',
+          `Ready for a break? Open Focus Stamina to start it.`
+        );
+      }
     } else {
       // Break completed → idle, with a pending after-break transition so the
       // UI can show "Break done — start next focus?" instead of just sitting idle.
@@ -259,10 +279,12 @@ export function useTimer(): UseTimerValue {
       });
       setAppState(next);
       activeRef.current = null;
-      notify(
-        'Break over',
-        `Ready for ${Math.round(suggestedFocusDurationSec(next.currentRampIndex) / 60)} min focus? Open Focus Stamina to start.`
-      );
+      if (settingsRef.current.notificationsEnabled) {
+        notify(
+          'Break over',
+          `Ready for ${Math.round(suggestedFocusDurationSec(next.currentRampIndex) / 60)} min focus? Open Focus Stamina to start.`
+        );
+      }
     }
   }, [repo]);
 
@@ -286,7 +308,7 @@ export function useTimer(): UseTimerValue {
   }, [appState, repo]);
 
   const startFocus = useCallback(
-    async (durationSec: number, subjectId: string | null, isOverride: boolean) => {
+    async (durationSec: number, subjectId: string | null) => {
       await ensureUnlocked();
       const current = await repo.getAppState();
       const active = createActiveTimer({
@@ -294,7 +316,7 @@ export function useTimer(): UseTimerValue {
         plannedDurationSec: durationSec,
         subjectId,
         rampIndexAtStart: current.currentRampIndex,
-        wasOverride: isOverride,
+        wasOverride: false,
         now: Date.now()
       });
       const next = await repo.setAppState({
@@ -307,6 +329,29 @@ export function useTimer(): UseTimerValue {
       scheduleNextChime(active);
     },
     [repo, ensureUnlocked, scheduleNextChime]
+  );
+
+  const startStopwatch = useCallback(
+    async (subjectId: string | null) => {
+      await ensureUnlocked();
+      const current = await repo.getAppState();
+      const active = createActiveTimer({
+        phase: 'focus',
+        plannedDurationSec: 0,
+        subjectId,
+        rampIndexAtStart: current.currentRampIndex,
+        wasOverride: false,
+        now: Date.now()
+      });
+      const next = await repo.setAppState({
+        activeTimer: active,
+        activeSubjectId: subjectId,
+        pendingTransition: null
+      });
+      setAppState(next);
+      activeRef.current = active;
+    },
+    [repo, ensureUnlocked]
   );
 
   const startBreak = useCallback(
@@ -412,7 +457,9 @@ export function useTimer(): UseTimerValue {
     const active = activeRef.current;
     if (!active || active.phase !== 'focus') return;
     cancelScheduledChime();
-    playTransitionAlert();
+    if (settingsRef.current.soundEnabled) {
+      playTransitionAlert();
+    }
 
     const elapsedSec = Math.floor((Date.now() - active.startedAt - active.pausedAccumMs) / 1000);
     const session: Session = {
@@ -453,7 +500,9 @@ export function useTimer(): UseTimerValue {
     });
     setAppState(next);
     activeRef.current = null;
-    notify('Focus session complete', 'Ready for a break? Open Focus Stamina to start it.');
+    if (settingsRef.current.notificationsEnabled) {
+      notify('Focus session complete', 'Ready for a break? Open Focus Stamina to start it.');
+    }
   }, [repo]);
 
   // User explicitly chose to climb the ramp via the "ready to ramp up?" modal.
@@ -508,9 +557,68 @@ export function useTimer(): UseTimerValue {
     [repo]
   );
 
-  // Notification title scheduling is done as a side effect of state transitions
-  // above. We don't pre-schedule notifications because there's no reliable
-  // browser API to fire one at a future timestamp from a regular page.
+  const updateSettings = useCallback(
+    async (patch: { soundEnabled?: boolean; notificationsEnabled?: boolean; tabFlashEnabled?: boolean }) => {
+      const next = await repo.setAppState(patch);
+      setAppState(next);
+    },
+    [repo]
+  );
+
+  // ---- Tab title: live countdown while a timer is active --------------------
+  useEffect(() => {
+    const active = appState?.activeTimer;
+    if (!active || active.pausedAt !== null) {
+      // Reset title when idle or paused (unless a pending transition flash is active).
+      if (!appState?.pendingTransition) {
+        document.title = BASE_TITLE;
+      }
+      return;
+    }
+    function tick() {
+      const s = getStatus(active!, Date.now());
+      if (s.isStopwatch) {
+        const mm = Math.floor(s.elapsedSec / 60).toString().padStart(2, '0');
+        const ss = (s.elapsedSec % 60).toString().padStart(2, '0');
+        document.title = `(${mm}:${ss}) Stopwatch | ${BASE_TITLE}`;
+      } else {
+        const remaining = Math.max(0, s.remainingSec);
+        const mm = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const ss = (remaining % 60).toString().padStart(2, '0');
+        const phase = active!.phase === 'focus' ? 'Focus' : 'Break';
+        document.title = `(${mm}:${ss}) ${phase} | ${BASE_TITLE}`;
+      }
+    }
+    tick(); // set immediately
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [appState?.activeTimer, appState?.pendingTransition]);
+
+  // ---- Tab title flash when a phase completes (pending transition) -----------
+  useEffect(() => {
+    const pending = appState?.pendingTransition;
+    if (!pending) return;
+    if (!(appState?.tabFlashEnabled ?? true)) {
+      // Flashing disabled — just set a static completion title.
+      document.title = pending.kind === 'after-focus'
+        ? `✓ Focus Done | ${BASE_TITLE}`
+        : `✓ Break Done | ${BASE_TITLE}`;
+      return () => { document.title = BASE_TITLE; };
+    }
+    const labels = pending.kind === 'after-focus'
+      ? ['🔴 Focus Done!', BASE_TITLE]
+      : ['🟢 Break Done!', BASE_TITLE];
+    let idx = 0;
+    document.title = labels[0];
+    const id = setInterval(() => {
+      idx = 1 - idx;
+      document.title = labels[idx];
+    }, 1000);
+    return () => {
+      clearInterval(id);
+      document.title = BASE_TITLE;
+    };
+  }, [appState?.pendingTransition, appState?.tabFlashEnabled]);
 
   void fmtPhaseTitle; // referenced by future toast logic; keep import quiet
 
@@ -524,6 +632,7 @@ export function useTimer(): UseTimerValue {
     appState,
     loading,
     startFocus,
+    startStopwatch,
     startBreak,
     pause,
     resume,
@@ -533,6 +642,7 @@ export function useTimer(): UseTimerValue {
     completeNow,
     extendBreakBy,
     skipBreak,
-    setActiveSubject
+    setActiveSubject,
+    updateSettings
   };
 }

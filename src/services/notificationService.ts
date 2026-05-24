@@ -29,12 +29,17 @@ export function notify(title: string, body: string): void {
   if (!isNotificationSupported()) return;
   if (Notification.permission !== 'granted') return;
   try {
-    new Notification(title, {
+    const n = new Notification(title, {
       body,
       icon: '/favicon.svg',
       tag: 'focus-stamina', // collapse repeats
-      requireInteraction: false
+      requireInteraction: true // stay visible until the user interacts
     });
+    // Clicking the notification focuses the tab/window.
+    n.onclick = () => {
+      window.focus();
+      n.close();
+    };
   } catch {
     // Some browsers throw if no SW is registered and you use certain options.
     // Falling through silently — the chime is the primary signal.
