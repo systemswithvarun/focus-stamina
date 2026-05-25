@@ -87,6 +87,11 @@ export interface AppState {
   dailyActiveMs: Record<string, number>;
 }
 
+// How long a pending post-session transition is allowed to sit before it
+// auto-clears. Past this, we assume the user stepped away (and effectively
+// took their break) and return to the idle focus screen.
+export const PENDING_TRANSITION_STALE_MS = 30 * 60 * 1000;
+
 // The ramp ladder. Each value is the focus session length in minutes.
 // Index into this array tracks how far up the ladder the user has climbed.
 export const RAMP_LADDER_MIN: readonly number[] = [5, 10, 15, 20, 25, 30, 40, 45] as const;

@@ -12,7 +12,8 @@ import {
   type AppState,
   type Session,
   BREAK_DEFAULT_MIN,
-  LOCAL_USER_ID
+  LOCAL_USER_ID,
+  PENDING_TRANSITION_STALE_MS
 } from '../types/models';
 import {
   afterFocusAborted,
@@ -59,7 +60,12 @@ interface UseTimerValue {
   // User chose to climb the ramp via the "ready to ramp up?" modal.
   advanceRamp: () => Promise<void>;
   // User dismissed the post-session "Start break?" / "Start focus?" modal.
+  // For after-focus modals this counts as a skipped break (logged).
   dismissTransition: () => Promise<void>;
+  // User stepped away from their workstation after a phase ended. Like
+  // dismissTransition but does NOT log a skipped break — they were taking
+  // a real break, not skipping one. Returns to idle focus screen.
+  stepAwayFromTransition: () => Promise<void>;
   // Update user-facing settings (sound, notifications, tab flash).
   updateSettings: (patch: { soundEnabled?: boolean; notificationsEnabled?: boolean; tabFlashEnabled?: boolean }) => Promise<void>;
 }
@@ -86,7 +92,18 @@ export function useTimer(): UseTimerValue {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const state = await repo.getAppState();
+      let state = await repo.getAppState();
+
+      // Drop stale pendingTransition. If the user stepped away after a phase
+      // ended and only just opened the tab again, force them back to the
+      // idle focus screen instead of trapping them in the modal.
+      if (
+        state.pendingTransition &&
+        Date.now() - state.pendingTransition.completedAt > PENDING_TRANSITION_STALE_MS
+      ) {
+        state = await repo.setAppState({ pendingTransition: null });
+      }
+
       const action = planRecovery({
         active: state.activeTimer,
         now: Date.now(),
@@ -159,12 +176,20 @@ export function useTimer(): UseTimerValue {
 
   // ---- Visibility recovery -------------------------------------------------
   // When the tab returns to foreground (or the laptop wakes), recompute and
-  // catch up any phase transitions we slept through.
+  // catch up any phase transitions we slept through. Also drop a stale
+  // pendingTransition so the user isn't trapped in the modal on return.
   useEffect(() => {
-    function onVisibilityChange() {
+    async function onVisibilityChange() {
       if (document.visibilityState !== 'visible') return;
       setNow(Date.now());
-      // If the phase has already elapsed, complete it.
+      const state = await repo.getAppState();
+      if (
+        state.pendingTransition &&
+        Date.now() - state.pendingTransition.completedAt > PENDING_TRANSITION_STALE_MS
+      ) {
+        const cleared = await repo.setAppState({ pendingTransition: null });
+        setAppState(cleared);
+      }
       void checkAndAdvanceIfElapsed();
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -404,6 +429,14 @@ export function useTimer(): UseTimerValue {
     setAppState(next);
   }, [repo]);
 
+  // User stepped away from the workstation after a phase ended. Clears the
+  // modal without logging a skipped break. Treat like the user took a real
+  // break: silent return to idle focus screen.
+  const stepAwayFromTransition = useCallback(async () => {
+    const next = await repo.setAppState({ pendingTransition: null });
+    setAppState(next);
+  }, [repo]);
+
   const pause = useCallback(async () => {
     const active = activeRef.current;
     if (!active || active.pausedAt !== null) return;
@@ -639,6 +672,7 @@ export function useTimer(): UseTimerValue {
     abort,
     advanceRamp,
     dismissTransition,
+    stepAwayFromTransition,
     completeNow,
     extendBreakBy,
     skipBreak,

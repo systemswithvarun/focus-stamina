@@ -41,6 +41,7 @@ export function TimerScreen() {
     abort,
     advanceRamp,
     dismissTransition,
+    stepAwayFromTransition,
     completeNow,
     extendBreakBy,
     skipBreak,
@@ -423,6 +424,7 @@ export function TimerScreen() {
               await startFocus(suggestedMin * 60, appState.activeSubjectId);
             }}
             onDismiss={() => void dismissTransition()}
+            onStepAway={() => void stepAwayFromTransition()}
           />
         )}
       </div>
@@ -615,13 +617,15 @@ function TransitionModal({
   suggestedNextFocusMin,
   onStartBreak,
   onStartFocus,
-  onDismiss
+  onDismiss,
+  onStepAway
 }: {
   transition: { kind: 'after-focus' | 'after-break'; completedDurationSec: number };
   suggestedNextFocusMin: number;
   onStartBreak: () => Promise<void>;
   onStartFocus: () => Promise<void>;
   onDismiss: () => void;
+  onStepAway: () => void;
 }) {
   const completedMin = Math.round(transition.completedDurationSec / 60);
   const isAfterFocus = transition.kind === 'after-focus';
@@ -649,7 +653,14 @@ function TransitionModal({
               <button className="btn big" onClick={onDismiss}>
                 Skip break
               </button>
+              <button className="btn btn-ghost big" onClick={onStepAway}>
+                I'm stepping away
+              </button>
             </div>
+            <p className="text-faint modal-footnote">
+              "Stepping away" closes this prompt without logging a skipped break — use it
+              when you're done at your desk for now.
+            </p>
           </>
         ) : (
           <>
